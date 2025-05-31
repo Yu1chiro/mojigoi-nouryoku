@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soal GOI JLPT N4-N3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-3xl font-bold mb-2">文字語彙練習</h1>
+            <p class="text-blue-100  mb-3">Yuk Latih Pemahaman Goi mu disini</p>
+            <p class="text-xs text-gray-700 text-white">
+                &copy; 2025 | Yuii
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Loading Spinner -->
+        <div id="loading" class="hidden text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-600">お待ちください....</p>
+        </div>
+
+        <!-- Question Card -->
+        <div id="questionCard" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">正しい物を選んでください！</h2>
+                <div id="questionText" class="text-lg mb-6 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                    <!-- Question akan dimuat di sini -->
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div id="options" class="space-y-3 mb-6">
+                <!-- Options akan dimuat di sini -->
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-4">
+                <button id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                   チェック
+                </button>
+                <button id="newQuestionBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                    次
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="stats" class="bg-white rounded-lg shadow-lg p-6 hidden">
+            <h3 class="text-lg font-semibold mb-4">データポイント</h3>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div id="totalQuestions" class="text-2xl font-bold text-blue-600">0</div>
+                    <div class="text-sm text-gray-600">質問の数</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div id="correctAnswers" class="text-2xl font-bold text-green-600">0</div>
+                    <div class="text-sm text-gray-600">マル</div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <div id="wrongAnswers" class="text-2xl font-bold text-red-600">0</div>
+                    <div class="text-sm text-gray-600">バツ</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Alert Modal -->
+    <div id="alertModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md mx-4 transform transition-all">
+            <div class="flex items-center mb-4">
+                <div id="alertIcon" class="mr-3">
+                    <!-- Icon akan dimuat di sini -->
+                </div>
+                <h3 id="alertTitle" class="text-lg font-semibold"></h3>
+            </div>
+            <p id="alertMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="alertCloseBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestion = null;
+let selectedAnswer = null;
+let stats = {
+    total: 0,
+    correct: 0,
+    wrong: 0
+};
+
+// Custom Alert Function
+function showAlert(title, message, type = 'info') {
+    const modal = document.getElementById('alertModal');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertIcon = document.getElementById('alertIcon');
+
+    alertTitle.textContent = title;
+    alertMessage.textContent = message;
+    // Reset class warna sebelumnya dari alertTitle
+    alertTitle.classList.remove('text-green-600', 'text-red-600', 'text-blue-600');
+
+    // Atur warna berdasarkan type
+    if (type === 'success') {
+        alertTitle.classList.add('text-green-600');
+    } else if (type === 'error') {
+        alertTitle.classList.add('text-red-600');
+    } else {
+        alertTitle.classList.add('text-blue-600'); // info/default
+    }
+
+    // Set isi teks
+    alertTitle.textContent = title;
+    alertMessage.innerHTML = message;
+    // Set icon berdasarkan type
+    if (type === 'success') {
+        alertIcon.innerHTML = '<div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center"><svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>';
+        
+        // Tampilkan gambar dan putar audio untuk jawaban benar
+        showNotificationMedia('/img/sekai.png', '/audio/sekai.mp3');
+        
+    } else if (type === 'error') {
+        alertIcon.innerHTML = '<div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center"><svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></div>';
+        
+        // Tampilkan gambar dan putar audio untuk jawaban salah
+        showNotificationMedia('/img/batsu.png', '/audio/batsu.mp3');
+        
+    } else {
+        alertIcon.innerHTML = '<div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center"><svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg></div>';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+// Function untuk menampilkan gambar dan memutar audio
+function showNotificationMedia(imagePath, audioPath) {
+    // Buat dan tampilkan gambar
+    const imageOverlay = document.createElement('div');
+    imageOverlay.id = 'imageOverlay';
+    imageOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    imageOverlay.innerHTML = `
+        <div class="relative">
+            <img src="${imagePath}" alt="Notification" class="max-w-xs max-h-xs object-contain animate-bounce">
+        </div>
+    `;
+    
+    document.body.appendChild(imageOverlay);
+    
+    // Putar audio
+    const audio = new Audio(audioPath);
+    audio.volume = 0.7; // Atur volume
+    audio.play().catch(error => {
+        console.log('Error playing audio:', error);
+    });
+    
+    // Hapus gambar setelah 2 detik
+    setTimeout(() => {
+        if (document.getElementById('imageOverlay')) {
+            document.body.removeChild(imageOverlay);
+        }
+    }, 2000);
+}
+
+// Close alert modal
+document.getElementById('alertCloseBtn').addEventListener('click', () => {
+    document.getElementById('alertModal').classList.add('hidden');
+});
+
+// Load question from API
+async function loadQuestion() {
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('questionCard').classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/generate-question', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentQuestion = result.data;
+            displayQuestion();
+        } else {
+            showAlert('Error', 'Gagal memuat soal: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading question:', error);
+        showAlert('Error', 'Terjadi kesalahan saat memuat soal', 'error');
+    }
+
+    document.getElementById('loading').classList.add('hidden');
+}
+
+// Display question
+function displayQuestion() {
+    if (!currentQuestion) return;
+
+    // Clean and format question text
+    let questionText = currentQuestion.question;
+    questionText = questionText.replace(/\//g, '').replace(/\//g, '');
+    
+    document.getElementById('questionText').innerHTML = questionText;
+
+    const optionsContainer = document.getElementById('options');
+    optionsContainer.innerHTML = '';
+
+    currentQuestion.options.forEach((option, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all';
+        optionDiv.innerHTML = `
+            <label class="flex items-center cursor-pointer">
+                <input type="radio" name="answer" value="${option.charAt(0)}" class="mr-3 text-blue-600">
+                <span class="text-gray-800">${option}</span>
+            </label>
+        `;
+
+        optionDiv.addEventListener('click', () => {
+            // Remove previous selection
+            document.querySelectorAll('#options > div').forEach(div => {
+                div.classList.remove('border-blue-500', 'bg-blue-50');
+                div.classList.add('border-gray-200');
+            });
+
+            // Add selection to clicked option
+            optionDiv.classList.remove('border-gray-200');
+            optionDiv.classList.add('border-blue-500', 'bg-blue-50');
+            
+            const radio = optionDiv.querySelector('input[type="radio"]');
+            radio.checked = true;
+            selectedAnswer = radio.value;
+        });
+
+        optionsContainer.appendChild(optionDiv);
+    });
+
+    document.getElementById('questionCard').classList.remove('hidden');
+    selectedAnswer = null;
+}
+
+// Submit answer
+function submitAnswer() {
+    if (!selectedAnswer) {
+        showAlert('すみません！', '答えを選びなさい！', 'error');
+        return;
+    }
+
+    stats.total++;
+    const isCorrect = selectedAnswer === currentQuestion.correct;
+
+    if (isCorrect) {
+        stats.correct++;
+        showAlert('正しい！良くできました！', ` ${currentQuestion.explanation || ''}`, 'success');
+    } else {
+        stats.wrong++;
+        showAlert('残念ながら、答えが間違いました！', `${currentQuestion.correct}. ${currentQuestion.explanation || ''}`, 'error');
+    }
+
+    updateStats();
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalQuestions').textContent = stats.total;
+    document.getElementById('correctAnswers').textContent = stats.correct;
+    document.getElementById('wrongAnswers').textContent = stats.wrong;
+    document.getElementById('stats').classList.remove('hidden');
+}
+
+// Event listeners
+document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+document.getElementById('newQuestionBtn').addEventListener('click', loadQuestion);
+
+// Load first question when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    loadQuestion();
+});
+    </script>
+</body>
+</html>
