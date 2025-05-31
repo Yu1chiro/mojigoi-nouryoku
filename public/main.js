@@ -65,7 +65,7 @@ function showAlert(title, message, type = 'info') {
 function showRateLimitAlert(remainingTime, used, limit) {
     const title = 'Wah! Kamu Cukup Berlatih Hari ini ✨';
     let message = `Untuk menghemat resource, kamu sudah berlatih dari batas harianmu saat ini ${used}/${limit} belajar.<br>`;
-    message += `Sambil menunggu <span id="countdown" class="font-bold text-orange-600">${remainingTime}</span>  Yuk istirahat terlebih dahulu😊`;
+    message += `Sambil menunggu <span id="countdown" class="font-bold text-orange-600">${remainingTime}</span> detik lagi! Yuk istirahat terlebih dahulu😊`;
     
     showAlert(title, message, 'rate-limit');
     
@@ -84,6 +84,12 @@ function showRateLimitAlert(remainingTime, used, limit) {
             // Tutup modal otomatis setelah countdown selesai
             document.getElementById('alertModal').classList.add('hidden');
             showAlert('Materi Ready ✅', 'Kamu dapat melanjutkan soal sekarang 🚀 Silahkan refresh browsermu ya!', 'success');
+            
+            // Enable tombol kembali
+            const newQuestionBtn = document.getElementById('newQuestionBtn');
+            newQuestionBtn.disabled = false;
+            newQuestionBtn.textContent = 'Soal Baru';
+            newQuestionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
     }, 1000);
 }
@@ -96,13 +102,6 @@ function showNotificationMedia(audioPath) {
     audio.play().catch(error => {
         console.log('Error playing audio:', error);
     });
-    
-    // Hapus gambar setelah 2 detik
-    setTimeout(() => {
-        if (document.getElementById('imageOverlay')) {
-            document.body.removeChild(imageOverlay);
-        }
-    }, 2000);
 }
 
 // Close alert modal
@@ -112,6 +111,13 @@ document.getElementById('alertCloseBtn').addEventListener('click', () => {
 
 // Load question from API
 async function loadQuestion() {
+    // Cek status rate limit terlebih dahulu
+    const rateLimitStatus = await checkRateLimitStatus();
+    if (!rateLimitStatus.canRequest) {
+        showRateLimitAlert(rateLimitStatus.remainingTime, rateLimitStatus.used, rateLimitStatus.limit);
+        return;
+    }
+
     document.getElementById('loading').classList.remove('hidden');
     document.getElementById('questionCard').classList.add('hidden');
 
@@ -138,13 +144,6 @@ async function loadQuestion() {
                 newQuestionBtn.disabled = true;
                 newQuestionBtn.textContent = `Tunggu ${result.remainingTime}s`;
                 newQuestionBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                
-                // Enable kembali setelah cooldown
-                setTimeout(() => {
-                    newQuestionBtn.disabled = false;
-                    newQuestionBtn.textContent = 'Soal Baru';
-                    newQuestionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                }, result.remainingTime * 1000);
                 
             } else {
                 showAlert('Error', 'Gagal memuat soal: ' + result.error, 'error');
@@ -219,7 +218,7 @@ function submitAnswer() {
         showAlert('正しい！良くできました！', ` ${currentQuestion.explanation || ''}`, 'success');
     } else {
         stats.wrong++;
-        showAlert('残念ながら、答えが間違いました！', `${currentQuestion.correct}. ${currentQuestion.explanation || ''}`, 'error');
+        showAlert('残念ながら、答えが間違いました！', `Jawaban yang benar: ${currentQuestion.correct}. ${currentQuestion.explanation || ''}`, 'error');
     }
 
     updateStats();
@@ -233,25 +232,45 @@ function updateStats() {
     document.getElementById('stats').classList.remove('hidden');
 }
 
-// Function untuk cek status rate limit (opsional)
+// Function untuk cek status rate limit - DIPERBAIKI
 async function checkRateLimitStatus() {
     try {
-        const response = await fetch('/api/rate-limit-status');
+        const response = await fetch('/api/rate-limit-status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Rate limit status:', data); // Debug log
         
-        // Tampilkan info rate limit di UI jika diperlukan
-        console.log('Rate limit status:', data);
-        
+        // Update UI berdasarkan status
+        const newQuestionBtn = document.getElementById('newQuestionBtn');
         if (!data.canRequest && data.remainingTime > 0) {
-            const newQuestionBtn = document.getElementById('newQuestionBtn');
             newQuestionBtn.disabled = true;
             newQuestionBtn.textContent = `Tunggu ${data.remainingTime}s`;
             newQuestionBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            newQuestionBtn.disabled = false;
+            newQuestionBtn.textContent = 'Soal Baru';
+            newQuestionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
         
         return data;
     } catch (error) {
         console.error('Error checking rate limit status:', error);
+        // Return default values jika error
+        return {
+            canRequest: true,
+            used: 0,
+            limit: 5,
+            remainingTime: 0
+        };
     }
 }
 
