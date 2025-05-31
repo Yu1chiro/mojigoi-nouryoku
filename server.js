@@ -17,8 +17,64 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Rate limiting storage (gunakan Map untuk menyimpan IP dan request count)
+const rateLimitStore = new Map();
+const RATE_LIMIT = 5; // 5 request per IP
+const COOLDOWN_TIME = 60000; // 1 menit dalam milliseconds
+
+// Middleware untuk rate limiting
+function rateLimitMiddleware(req, res, next) {
+  const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+  const now = Date.now();
+  
+  // Bersihkan data lama (lebih dari cooldown time)
+  for (const [ip, data] of rateLimitStore.entries()) {
+    if (now - data.firstRequest > COOLDOWN_TIME) {
+      rateLimitStore.delete(ip);
+    }
+  }
+  
+  // Cek apakah IP sudah ada di store
+  if (rateLimitStore.has(clientIP)) {
+    const ipData = rateLimitStore.get(clientIP);
+    
+    // Jika masih dalam periode cooldown
+    if (now - ipData.firstRequest < COOLDOWN_TIME) {
+      if (ipData.count >= RATE_LIMIT) {
+        const remainingTime = Math.ceil((COOLDOWN_TIME - (now - ipData.firstRequest)) / 1000);
+        return res.status(429).json({
+          success: false,
+          error: 'rate_limit_exceeded',
+          message: `Terlalu banyak permintaan. Silakan tunggu ${remainingTime} detik lagi.`,
+          remainingTime: remainingTime,
+          limit: RATE_LIMIT,
+          used: ipData.count
+        });
+      } else {
+        // Tambah counter
+        ipData.count++;
+      }
+    } else {
+      // Reset counter jika sudah lewat cooldown
+      rateLimitStore.set(clientIP, {
+        count: 1,
+        firstRequest: now
+      });
+    }
+  } else {
+    // IP baru, buat entry baru
+    rateLimitStore.set(clientIP, {
+      count: 1,
+      firstRequest: now
+    });
+  }
+  
+  next();
+}
+
+
 // Endpoint untuk generate soal GOI
-app.post('/api/generate-question', async (req, res) => {
+app.post('/api/generate-question', rateLimitMiddleware, async (req, res) => {
   try {
 const prompt = `Buatkan 1 soal GOI (sinonim) JLPT dalam format JSON berikut:
 {
