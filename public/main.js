@@ -88,7 +88,7 @@ function showRateLimitAlert(remainingTime, used, limit) {
             // Enable tombol kembali
             const newQuestionBtn = document.getElementById('newQuestionBtn');
             newQuestionBtn.disabled = false;
-            newQuestionBtn.textContent = 'Soal Baru';
+            newQuestionBtn.textContent = '次の問題';
             newQuestionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
     }, 1000);
@@ -139,7 +139,7 @@ async function loadQuestion() {
             if (result.error === 'rate_limit_exceeded') {
                 showRateLimitAlert(result.remainingTime, result.used, result.limit);
                 
-                // Disable tombol "Soal Baru" sementara
+                // Disable tombol "次" sementara
                 const newQuestionBtn = document.getElementById('newQuestionBtn');
                 newQuestionBtn.disabled = true;
                 newQuestionBtn.textContent = `Tunggu ${result.remainingTime}s`;
@@ -218,7 +218,7 @@ function submitAnswer() {
         showAlert('正しい！良くできました！', ` ${currentQuestion.explanation || ''}`, 'success');
     } else {
         stats.wrong++;
-        showAlert('残念ながら、答えが間違いました！', `Jawaban yang benar: ${currentQuestion.correct}. ${currentQuestion.explanation || ''}`, 'error');
+        showAlert('残念ながら、答えが間違いました！', `Penjelasan : ${currentQuestion.correct}. ${currentQuestion.explanation || ''}`, 'error');
     }
 
     updateStats();
@@ -257,7 +257,7 @@ async function checkRateLimitStatus() {
             newQuestionBtn.classList.add('opacity-50', 'cursor-not-allowed');
         } else {
             newQuestionBtn.disabled = false;
-            newQuestionBtn.textContent = 'Soal Baru';
+            newQuestionBtn.textContent = '次の問題';
             newQuestionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
         
